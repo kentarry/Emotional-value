@@ -84,20 +84,23 @@ function updatePersonaSelect() {
 function onPersonaChange() {
     state.persona = DOM.personaSelect.value;
     localStorage.setItem('warmchat-persona', state.persona);
-    // 清除 AI 自訂頭像（切換人設時重置）
-    state.customAiName = '';
-    state.customAiAvatar = '';
-    state.customAiAvatarUrl = '';
-    localStorage.removeItem('warmchat-ai-name');
-    localStorage.removeItem('warmchat-ai-avatar');
-    localStorage.removeItem('warmchat-ai-custom-avatar');
-    // 更新 header avatar
+    // 更新 header avatar（保留自訂 AI 頭像）
     const p = PERSONAS[state.persona];
     const avatarEl = document.querySelector('.avatar-icon');
-    if (avatarEl) avatarEl.textContent = (p && state.persona !== 'default') ? p.icon : '💛';
-    // 更新 header name
+    if (state.customAiAvatarUrl) {
+        if (avatarEl) avatarEl.innerHTML = `<img src="${state.customAiAvatarUrl}" style="width:100%;height:100%;object-fit:cover;">`;
+    } else if (state.customAiAvatar) {
+        if (avatarEl) avatarEl.textContent = state.customAiAvatar;
+    } else {
+        if (avatarEl) avatarEl.textContent = (p && state.persona !== 'default') ? p.icon : '💛';
+    }
+    // 更新 header name（保留自訂名稱）
     const nameEl = document.querySelector('.header-title');
-    if (nameEl) nameEl.textContent = p ? p.name : '暖心夥伴';
+    if (state.customAiName) {
+        if (nameEl) nameEl.textContent = state.customAiName;
+    } else {
+        if (nameEl) nameEl.textContent = p ? p.name : '暖心夥伴';
+    }
     // 切換人設時重新發起對話
     DOM.msgs.innerHTML = '';
     state.messages = [];

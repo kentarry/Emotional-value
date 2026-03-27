@@ -135,7 +135,8 @@ body {
 .header-avatar { position: relative; flex-shrink: 0; }
 .avatar-glow { position: absolute; inset: -4px; border-radius: 50%; background: var(--primary); opacity: 0.3; animation: avatarPulse 3s ease-in-out infinite; }
 @keyframes avatarPulse { 0%, 100% { opacity: 0.3; transform: scale(1); } 50% { opacity: 0.5; transform: scale(1.15); } }
-.avatar-icon { position: relative; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; background: linear-gradient(135deg, hsl(38, 90%, 50%), hsl(25, 85%, 55%)); border-radius: 50%; box-shadow: var(--shadow-sm); }
+.avatar-icon { position: relative; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; background: linear-gradient(135deg, hsl(38, 90%, 50%), hsl(25, 85%, 55%)); border-radius: 50%; box-shadow: var(--shadow-sm); overflow: hidden; }
+.avatar-icon img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
 .status-dot { position: absolute; bottom: 2px; right: 2px; width: 12px; height: 12px; background: hsl(140, 70%, 50%); border-radius: 50%; border: 2px solid var(--bg-secondary); animation: statusPulse 2s ease-in-out infinite; }
 @keyframes statusPulse { 0%, 100% { box-shadow: 0 0 0 0 hsla(140, 70%, 50%, 0.4); } 50% { box-shadow: 0 0 0 4px hsla(140, 70%, 50%, 0); } }
 .header-info { flex: 1; min-width: 0; }

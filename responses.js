@@ -28,8 +28,8 @@ const PERSONAS = {
     gentle:    { name: '溫柔前輩', icon: '🌸' },
     analyst:   { name: '理性好友', icon: '🧊' },
     funny:     { name: '搞笑損友', icon: '😂' },
-    boss:      { name: '老闆(發洩用)', icon: '👔' },
-    team_lead: { name: '組長(發洩用)', icon: '📋' },
+    boss:      { name: '老闆', icon: '👔' },
+    team_lead: { name: '組長', icon: '📋' },
 };
 
 // ===== 動態回應建構系統 =====
