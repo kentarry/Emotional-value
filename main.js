@@ -1,12 +1,3 @@
-// Global: image lightbox viewer
-function showLightbox(src) {
-    const lb = document.createElement('div');
-    lb.className = 'image-lightbox';
-    lb.innerHTML = `<img src="${src}" alt="放大圖片">`;
-    lb.addEventListener('click', () => lb.remove());
-    document.body.appendChild(lb);
-}
-
 // Main Application Logic
 (function() {
 const state = {
@@ -16,7 +7,6 @@ const state = {
     advancedUseCount: parseInt(localStorage.getItem('warmchat-adv-count') || '0'),
     userName: localStorage.getItem('warmchat-name') || '',
     userAvatar: localStorage.getItem('warmchat-avatar') || '🧑',
-    pendingImage: null, // { dataUrl, name }
     adsEnabled: false // Set to true to enable ads
 };
 
@@ -46,9 +36,9 @@ function toggleTheme() {
 
 // ===== TIER =====
 const tierDescs = {
-    basic:'簡短溫暖的回應，快速給你一個暖心擁抱 🤗',
-    intermediate:'深入理解你的心情，給予更貼心的回應 💝',
-    advanced:'專業級情緒支持，像最懂你的知心好友 👑'
+    basic:'簡短友善的聊天，像朋友打招呼 🤗',
+    intermediate:'有溫度的對話，會追問關心你 💝',
+    advanced:'像知心好友一樣，跟你深入聊聊 👑'
 };
 const tierIcons = {basic:'💬',intermediate:'💝',advanced:'👑'};
 const tierLabels = {basic:'基本模式',intermediate:'中階模式',advanced:'進階模式'};
@@ -61,7 +51,7 @@ function setTier(t) {
     DOM.tierBadge.innerHTML = `<span class="tier-badge-icon">${tierIcons[t]}</span><span class="tier-badge-label">${tierLabels[t]}</span>`;
 }
 
-// ===== AVATAR & NAME =====
+// ===== PROFILE EDITOR (Avatar + Name + Image Upload) =====
 function showProfileEditor() {
     const avatars = ['🧑','👩','👨','🧒','👧','👦','🐱','🐶','🐰','🦊','🐻','🐼','🦁','🐯','🦄','🌸','⭐','🌈','🍀','🎀','👻','🤖','🎭','💎','🔥'];
     const overlay = document.createElement('div');
@@ -73,6 +63,11 @@ function showProfileEditor() {
         <input type="text" id="pe-name" class="pe-input" placeholder="輸入暱稱（選填）" value="${state.userName}" maxlength="20"></div>
         <div class="pe-section"><label>選擇頭像</label>
         <div class="pe-avatars">${avatars.map(a=>`<button class="pe-av-btn${a===state.userAvatar?' active':''}" data-av="${a}">${a}</button>`).join('')}</div></div>
+        <div class="pe-section"><label>或上傳自訂頭像</label>
+        <input type="file" id="pe-avatar-upload" accept="image/*" class="pe-input" style="padding:8px">
+        <div id="pe-avatar-preview" style="display:none;margin-top:8px;text-align:center;">
+            <img id="pe-avatar-img" style="width:60px;height:60px;border-radius:50%;object-fit:cover;border:2px solid var(--primary);">
+        </div></div>
         <div class="pe-actions">
             <button class="pe-cancel" id="pe-cancel">取消</button>
             <button class="pe-save" id="pe-save">儲存 💛</button>
@@ -84,15 +79,44 @@ function showProfileEditor() {
         b.addEventListener('click',()=>{
             overlay.querySelectorAll('.pe-av-btn').forEach(x=>x.classList.remove('active'));
             b.classList.add('active');
+            $('pe-avatar-preview').style.display='none';
         });
+    });
+    // Image upload for custom avatar
+    $('pe-avatar-upload').addEventListener('change', (e)=>{
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev)=>{
+            $('pe-avatar-img').src = ev.target.result;
+            $('pe-avatar-preview').style.display='block';
+            overlay.querySelectorAll('.pe-av-btn').forEach(x=>x.classList.remove('active'));
+        };
+        reader.readAsDataURL(file);
     });
     $('pe-cancel').addEventListener('click',()=>{overlay.classList.remove('visible');setTimeout(()=>overlay.remove(),300);});
     $('pe-save').addEventListener('click',()=>{
         const name = $('pe-name').value.trim();
         const av = overlay.querySelector('.pe-av-btn.active');
-        state.userName = name; state.userAvatar = av ? av.dataset.av : state.userAvatar;
+        const customImg = $('pe-avatar-img').src;
+        const hasCustom = $('pe-avatar-preview').style.display !== 'none' && customImg;
+        state.userName = name;
+        if (hasCustom) {
+            state.userAvatar = '📷'; // placeholder - store data URL
+            state.customAvatarUrl = customImg;
+            localStorage.setItem('warmchat-custom-avatar', customImg);
+        } else if (av) {
+            state.userAvatar = av.dataset.av;
+            state.customAvatarUrl = null;
+            localStorage.removeItem('warmchat-custom-avatar');
+        }
         localStorage.setItem('warmchat-name',state.userName);
         localStorage.setItem('warmchat-avatar',state.userAvatar);
+        // Update profile button
+        const profBtn = $('profile-btn');
+        if (profBtn) profBtn.innerHTML = state.customAvatarUrl
+            ? `<img src="${state.customAvatarUrl}" style="width:24px;height:24px;border-radius:50%;object-fit:cover;">`
+            : `<span>${state.userAvatar}</span>`;
         overlay.classList.remove('visible'); setTimeout(()=>overlay.remove(),300);
     });
 }
@@ -101,26 +125,27 @@ function showProfileEditor() {
 function formatTime() {
     const n=new Date(); return `${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`;
 }
-function addMessage(text, type, tierTag, imageUrl) {
+function addMessage(text, type, tierTag) {
     if (DOM.welcome && state.messageCount===0) DOM.welcome.style.display='none';
     const time = formatTime();
     const div = document.createElement('div');
     const tierClass = type==='bot' && tierTag ? ` tier-${tierTag}` : '';
     div.className = `message ${type}${tierClass}`;
-    const avatarText = type==='user' ? state.userAvatar : '💛';
+    let avatarHtml;
+    if (type==='user' && state.customAvatarUrl) {
+        avatarHtml = `<img src="${state.customAvatarUrl}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
+    } else {
+        avatarHtml = type==='user' ? state.userAvatar : '💛';
+    }
     let tierBadge = '';
     if (type==='bot' && tierTag) {
         const labels = {basic:'基本',intermediate:'中階',advanced:'進階'};
         tierBadge = `<div class="message-tier-tag ${tierTag}">${tierIcons[tierTag]} ${labels[tierTag]}</div>`;
     }
-    let imgHtml = '';
-    if (imageUrl) {
-        imgHtml = `<img class="message-image" src="${imageUrl}" alt="使用者圖片" onclick="showLightbox(this.src)">`;
-    }
     const textHtml = text ? text.replace(/\n/g,'<br>') : '';
-    div.innerHTML = `<div class="message-avatar">${avatarText}</div><div><div class="message-bubble">${tierBadge}${imgHtml}${textHtml}</div><div class="message-time">${time}</div></div>`;
+    div.innerHTML = `<div class="message-avatar">${avatarHtml}</div><div><div class="message-bubble">${tierBadge}${textHtml}</div><div class="message-time">${time}</div></div>`;
     DOM.msgs.appendChild(div);
-    state.messages.push({text,type,time,imageUrl}); state.messageCount++;
+    state.messages.push({text,type,time}); state.messageCount++;
     requestAnimationFrame(()=>{DOM.chatArea.scrollTop=DOM.chatArea.scrollHeight;});
 }
 
@@ -156,37 +181,19 @@ function showAd() {
     });
 }
 
-// ===== IMAGE RESPONSES =====
-const IMAGE_RESPONSES = [
-    '收到你的照片了 📸💛 謝謝你跟我分享～ 你想跟我聊聊這張圖片嗎？不管是想說什麼故事，或是只是想讓我看看，我都好開心 🥰',
-    '哇～ 謝謝你傳圖片給我看 📸✨ 你願意跟我分享這些，我覺得好溫暖。想說些什麼嗎？我在聽 💛',
-    '圖片收到了 📸 有時候文字說不清楚的東西，一張圖片就能表達 🥺 你想跟我說說這張圖片背後的故事嗎？💛',
-    '收到！📸 謝謝你讓我看到你想分享的東西 🥰 不管是開心的、難過的、或只是一個瞬間，我都珍惜你願意跟我分享 💛',
-];
-
 // ===== SEND MESSAGE =====
 async function sendMessage() {
     const text = DOM.input.value.trim();
-    const hasImage = state.pendingImage !== null;
-    if (!text && !hasImage || state.isTyping) return;
-    const imageUrl = hasImage ? state.pendingImage.dataUrl : null;
-    addMessage(text || '', 'user', null, imageUrl);
+    if (!text || state.isTyping) return;
+    addMessage(text, 'user');
     DOM.input.value=''; DOM.input.style.height='auto'; DOM.sendBtn.disabled=true;
-    clearImagePreview();
     if (shouldShowAd()) await showAd();
     state.isTyping=true;
     DOM.typing.classList.add('visible');
     requestAnimationFrame(()=>{DOM.chatArea.scrollTop=DOM.chatArea.scrollHeight;});
-    let response;
-    let analysis = {category:'general'};
-    if (text) {
-        analysis = analyzeMessage(text);
-        response = getTierResponse(analysis, state.tier);
-        if (hasImage) response = response + '\n\n對了，謝謝你傳圖片給我看 📸 你想跟我多說一點嗎？💛';
-    } else {
-        response = IMAGE_RESPONSES[Math.floor(Math.random()*IMAGE_RESPONSES.length)];
-    }
-    const delay = Math.min(800 + response.length*10, 3000);
+    const analysis = analyzeMessage(text);
+    const response = getTierResponse(analysis, state.tier);
+    const delay = Math.min(600 + response.length*8, 2200);
     setTimeout(()=>{
         DOM.typing.classList.remove('visible'); state.isTyping=false;
         addMessage(response, 'bot', state.tier);
@@ -194,27 +201,6 @@ async function sendMessage() {
         if(pos.includes(analysis.category)) spawnCelebration(); else spawnHearts(2);
         if(state.messageCount>0 && state.messageCount%8===0) showMoodPopup();
     }, delay);
-}
-
-// ===== IMAGE UPLOAD =====
-function handleImageSelect(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-        state.pendingImage = { dataUrl: ev.target.result, name: file.name };
-        const preview = $('image-preview-area');
-        $('image-preview').src = ev.target.result;
-        preview.style.display = 'block';
-        DOM.sendBtn.disabled = false;
-    };
-    reader.readAsDataURL(file);
-}
-function clearImagePreview() {
-    state.pendingImage = null;
-    $('image-preview-area').style.display = 'none';
-    $('image-preview').src = '';
-    $('image-input').value = '';
 }
 
 // ===== EFFECTS =====
@@ -231,29 +217,30 @@ function spawnCelebration() {
 function showMoodPopup(){DOM.moodPopup.classList.add('visible');setTimeout(()=>DOM.moodPopup.classList.remove('visible'),5000);}
 function handleMood(mood){
     DOM.moodPopup.classList.remove('visible');
-    const r={better:'太好了！看到你好一點我就放心了 🥰',same:'沒關係～慢慢來，我繼續陪著你 💛',worse:'嗚嗚...那我們再多聊一聊好嗎？我不會讓你一個人的 💛'};
+    const r={better:'太好了！那我就放心了 🥰',same:'沒事沒事 我繼續陪你 💛',worse:'那我們再聊聊吧 我不走的 💛'};
     setTimeout(()=>{state.isTyping=true;DOM.typing.classList.add('visible');setTimeout(()=>{DOM.typing.classList.remove('visible');state.isTyping=false;addMessage(r[mood],'bot',state.tier);spawnHearts(2);},1200);},500);
 }
 
 // ===== EVENTS =====
 function init() {
     initTheme(); setTier(state.tier);
+    // Restore custom avatar
+    const savedCustom = localStorage.getItem('warmchat-custom-avatar');
+    if (savedCustom) state.customAvatarUrl = savedCustom;
     DOM.sendBtn.addEventListener('click', sendMessage);
     DOM.input.addEventListener('keydown', e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();}});
-    DOM.input.addEventListener('input', ()=>{DOM.input.style.height='auto';DOM.input.style.height=Math.min(DOM.input.scrollHeight,120)+'px';DOM.sendBtn.disabled=!(DOM.input.value.trim()||state.pendingImage);});
+    DOM.input.addEventListener('input', ()=>{DOM.input.style.height='auto';DOM.input.style.height=Math.min(DOM.input.scrollHeight,120)+'px';DOM.sendBtn.disabled=!DOM.input.value.trim();});
     DOM.themeToggle.addEventListener('click', toggleTheme);
     DOM.clearChat.addEventListener('click', ()=>{if(state.messages.length>0){DOM.msgs.innerHTML='';state.messages=[];state.messageCount=0;if(DOM.welcome)DOM.welcome.style.display='flex';}});
     document.querySelectorAll('.tier-btn').forEach(b=>b.addEventListener('click',()=>setTier(b.dataset.tier)));
     document.querySelectorAll('.starter-chip').forEach(c=>c.addEventListener('click',()=>{DOM.input.value=c.dataset.message;DOM.sendBtn.disabled=false;sendMessage();}));
     document.querySelectorAll('.mood-btn').forEach(b=>b.addEventListener('click',()=>handleMood(b.dataset.mood)));
-    // Image upload
-    $('image-btn').addEventListener('click', ()=>$('image-input').click());
-    $('image-input').addEventListener('change', handleImageSelect);
-    $('image-preview-remove').addEventListener('click', ()=>{clearImagePreview();DOM.sendBtn.disabled=!DOM.input.value.trim();});
-    // Profile editor button - add to header
+    // Profile editor button
     const profBtn = document.createElement('button');
     profBtn.className='icon-btn'; profBtn.id='profile-btn'; profBtn.title='自訂形象';
-    profBtn.innerHTML=`<span>${state.userAvatar}</span>`;
+    profBtn.innerHTML = state.customAvatarUrl
+        ? `<img src="${state.customAvatarUrl}" style="width:24px;height:24px;border-radius:50%;object-fit:cover;">`
+        : `<span>${state.userAvatar}</span>`;
     profBtn.addEventListener('click', showProfileEditor);
     document.querySelector('.header-actions').prepend(profBtn);
     setTimeout(()=>DOM.input.focus(), 500);
