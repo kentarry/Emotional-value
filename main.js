@@ -14,6 +14,7 @@ const state = {
     customAiName: localStorage.getItem('warmchat-ai-name') || '',
     customAiAvatar: localStorage.getItem('warmchat-ai-avatar') || '',
     customAiAvatarUrl: localStorage.getItem('warmchat-ai-custom-avatar') || '',
+    customAiSubtitle: localStorage.getItem('warmchat-ai-subtitle') || '',
 };
 
 const $ = id => document.getElementById(id);
@@ -172,19 +173,35 @@ function showProfileEditor() {
 function showAiProfileEditor() {
     const p = PERSONAS[state.persona] || PERSONAS.default;
     const currentName = state.customAiName || p.name;
-    const avatars = ['💛','💙','💗','👨','👩','🧑','👩‍🦱','👯','🌸','🧊','😂','👔','📋','🐱','🐶','🐰','🦊','🐻','🐼','🦁','🐯','🦄','👻','🤖','🎭','💎','🔥','⭐','🌈','🎀'];
+    const currentSub = state.customAiSubtitle || '隨時在這裡陪伴你 ✨';
+    const avatars = ['💛','💙','💗','👨','👩','🧑','👩‍🦱','👯','🌸','🧊','😂','👔','📋','🐱','🐶','🐰','🦊','🐻','🐼','🦁','🐯','🦄','👻','🤖'];
     const overlay = document.createElement('div');
     overlay.className = 'profile-editor-overlay';
-    overlay.innerHTML = `<div class="profile-editor">
+    overlay.innerHTML = `<div class="profile-editor" style="max-height:85vh;overflow-y:auto;">
         <h3>✏️ 自訂 AI 角色</h3>
-        <label>AI 名稱</label>
-        <input type="text" id="ai-pe-name" value="${currentName}" placeholder="輸入自訂名稱" maxlength="12">
-        <label>選擇頭像</label>
-        <div class="pe-avatar-grid">${avatars.map(a=>`<button class="pe-av-btn${(state.customAiAvatar===a)?' active':''}" data-av="${a}">${a}</button>`).join('')}</div>
-        <label>或上傳圖片</label>
-        <input type="file" id="ai-pe-avatar-upload" accept="image/*" style="margin-bottom:8px">
-        <div id="ai-pe-avatar-preview" style="display:${state.customAiAvatarUrl?'block':'none'};text-align:center;margin-bottom:8px;"><img id="ai-pe-avatar-img" src="${state.customAiAvatarUrl||''}" style="width:64px;height:64px;border-radius:50%;object-fit:cover;"></div>
-        <div class="pe-actions"><button id="ai-pe-cancel" class="pe-btn">取消</button><button id="ai-pe-save" class="pe-btn primary">儲存</button></div>
+        <div class="pe-section">
+            <label>AI 名稱</label>
+            <input type="text" class="pe-input" id="ai-pe-name" value="${currentName}" placeholder="輸入自訂名稱" maxlength="12">
+        </div>
+        <div class="pe-section">
+            <label>副標題文字</label>
+            <input type="text" class="pe-input" id="ai-pe-subtitle" value="${currentSub}" placeholder="例如：隨時在這裡陪伴你 ✨" maxlength="30">
+        </div>
+        <div class="pe-section">
+            <label>選擇頭像</label>
+            <div class="pe-avatars">${avatars.map(a=>`<button class="pe-av-btn${(state.customAiAvatar===a)?' active':''}" data-av="${a}">${a}</button>`).join('')}</div>
+        </div>
+        <div class="pe-section">
+            <label>或上傳圖片</label>
+            <input type="file" id="ai-pe-avatar-upload" accept="image/*" class="pe-input" style="padding:8px;">
+            <div id="ai-pe-avatar-preview" style="display:${state.customAiAvatarUrl?'flex':'none'};justify-content:center;margin-top:8px;">
+                <img id="ai-pe-avatar-img" src="${state.customAiAvatarUrl||''}" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:2px solid var(--border-medium);">
+            </div>
+        </div>
+        <div class="pe-actions">
+            <button id="ai-pe-cancel" class="pe-cancel">取消</button>
+            <button id="ai-pe-save" class="pe-save">儲存</button>
+        </div>
     </div>`;
     document.body.appendChild(overlay);
     requestAnimationFrame(()=>overlay.classList.add('visible'));
@@ -198,16 +215,18 @@ function showAiProfileEditor() {
     $('ai-pe-avatar-upload').addEventListener('change',(e)=>{
         const file = e.target.files[0]; if (!file) return;
         const reader = new FileReader();
-        reader.onload = (ev)=>{ $('ai-pe-avatar-img').src = ev.target.result; $('ai-pe-avatar-preview').style.display='block'; overlay.querySelectorAll('.pe-av-btn').forEach(x=>x.classList.remove('active')); };
+        reader.onload = (ev)=>{ $('ai-pe-avatar-img').src = ev.target.result; $('ai-pe-avatar-preview').style.display='flex'; overlay.querySelectorAll('.pe-av-btn').forEach(x=>x.classList.remove('active')); };
         reader.readAsDataURL(file);
     });
     $('ai-pe-cancel').addEventListener('click',()=>{overlay.classList.remove('visible');setTimeout(()=>overlay.remove(),300);});
     $('ai-pe-save').addEventListener('click',()=>{
         const name = $('ai-pe-name').value.trim();
+        const subtitle = $('ai-pe-subtitle').value.trim();
         const av = overlay.querySelector('.pe-av-btn.active');
-        const customImg = $('ai-pe-avatar-img').src;
+        const customImg = $('ai-pe-avatar-img') ? $('ai-pe-avatar-img').src : '';
         const hasCustom = $('ai-pe-avatar-preview').style.display !== 'none' && customImg;
         if (name) { state.customAiName = name; localStorage.setItem('warmchat-ai-name', name); }
+        if (subtitle) { state.customAiSubtitle = subtitle; localStorage.setItem('warmchat-ai-subtitle', subtitle); }
         if (hasCustom) {
             state.customAiAvatar = '';
             state.customAiAvatarUrl = customImg;
@@ -222,12 +241,16 @@ function showAiProfileEditor() {
         // 更新 header
         const avatarEl = document.querySelector('.avatar-icon');
         if (avatarEl) {
-            if (state.customAiAvatarUrl) avatarEl.innerHTML = `<img src="${state.customAiAvatarUrl}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;">`;
+            if (state.customAiAvatarUrl) avatarEl.innerHTML = `<img src="${state.customAiAvatarUrl}">`;
             else if (state.customAiAvatar) avatarEl.textContent = state.customAiAvatar;
             else { const pp = PERSONAS[state.persona]; avatarEl.textContent = (pp && state.persona !== 'default') ? pp.icon : '💛'; }
         }
         const nameEl = document.querySelector('.header-title');
         if (nameEl && state.customAiName) nameEl.textContent = state.customAiName;
+        const subEl = document.querySelector('.header-subtitle');
+        if (subEl && state.customAiSubtitle) {
+            subEl.innerHTML = `<span class="online-indicator"></span>${state.customAiSubtitle}`;
+        }
         overlay.classList.remove('visible'); setTimeout(()=>overlay.remove(),300);
     });
 }
@@ -379,10 +402,14 @@ function init() {
     }
     if (state.customAiAvatarUrl) {
         const avatarEl = document.querySelector('.avatar-icon');
-        if (avatarEl) avatarEl.innerHTML = `<img src="${state.customAiAvatarUrl}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;">`;
+        if (avatarEl) avatarEl.innerHTML = `<img src="${state.customAiAvatarUrl}">`;
     } else if (state.customAiAvatar) {
         const avatarEl = document.querySelector('.avatar-icon');
         if (avatarEl) avatarEl.textContent = state.customAiAvatar;
+    }
+    if (state.customAiSubtitle) {
+        const subEl = document.querySelector('.header-subtitle');
+        if (subEl) subEl.innerHTML = `<span class="online-indicator"></span>${state.customAiSubtitle}`;
     }
     setTimeout(()=>DOM.input.focus(), 500);
     setInterval(()=>{if(Math.random()>0.7)spawnHearts(1);},8000);
