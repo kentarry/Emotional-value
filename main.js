@@ -9,7 +9,11 @@ const state = {
     userAvatar: localStorage.getItem('warmchat-avatar') || '🧑',
     adsEnabled: false,
     persona: localStorage.getItem('warmchat-persona') || 'default',
-    lastTopic: null,  // 對話前後呼應用
+    lastTopic: null,
+    // AI 頭像自訂
+    customAiName: localStorage.getItem('warmchat-ai-name') || '',
+    customAiAvatar: localStorage.getItem('warmchat-ai-avatar') || '',
+    customAiAvatarUrl: localStorage.getItem('warmchat-ai-custom-avatar') || '',
 };
 
 const $ = id => document.getElementById(id);
@@ -59,7 +63,7 @@ function setTier(t) {
 function updatePersonaSelect() {
     if (!DOM.personaSelect) return;
     const allKeys = Object.keys(PERSONAS);
-    // 基礎：5, 中階：8, 進階：全部11
+    // 基礎：5, 中階：8, 進階：全部13
     let keys;
     if (state.tier === 'basic') keys = allKeys.slice(0, 5);
     else if (state.tier === 'intermediate') keys = allKeys.slice(0, 8);
@@ -80,10 +84,20 @@ function updatePersonaSelect() {
 function onPersonaChange() {
     state.persona = DOM.personaSelect.value;
     localStorage.setItem('warmchat-persona', state.persona);
+    // 清除 AI 自訂頭像（切換人設時重置）
+    state.customAiName = '';
+    state.customAiAvatar = '';
+    state.customAiAvatarUrl = '';
+    localStorage.removeItem('warmchat-ai-name');
+    localStorage.removeItem('warmchat-ai-avatar');
+    localStorage.removeItem('warmchat-ai-custom-avatar');
     // 更新 header avatar
     const p = PERSONAS[state.persona];
     const avatarEl = document.querySelector('.avatar-icon');
     if (avatarEl) avatarEl.textContent = (p && state.persona !== 'default') ? p.icon : '💛';
+    // 更新 header name
+    const nameEl = document.querySelector('.header-title');
+    if (nameEl) nameEl.textContent = p ? p.name : '暖心夥伴';
     // 切換人設時重新發起對話
     DOM.msgs.innerHTML = '';
     state.messages = [];
@@ -151,6 +165,70 @@ function showProfileEditor() {
     });
 }
 
+// ===== AI PROFILE EDITOR =====
+function showAiProfileEditor() {
+    const p = PERSONAS[state.persona] || PERSONAS.default;
+    const currentName = state.customAiName || p.name;
+    const avatars = ['💛','💙','💗','👨','👩','🧑','👩‍🦱','👯','🌸','🧊','😂','👔','📋','🐱','🐶','🐰','🦊','🐻','🐼','🦁','🐯','🦄','👻','🤖','🎭','💎','🔥','⭐','🌈','🎀'];
+    const overlay = document.createElement('div');
+    overlay.className = 'profile-editor-overlay';
+    overlay.innerHTML = `<div class="profile-editor">
+        <h3>✏️ 自訂 AI 角色</h3>
+        <label>AI 名稱</label>
+        <input type="text" id="ai-pe-name" value="${currentName}" placeholder="輸入自訂名稱" maxlength="12">
+        <label>選擇頭像</label>
+        <div class="pe-avatar-grid">${avatars.map(a=>`<button class="pe-av-btn${(state.customAiAvatar===a)?' active':''}" data-av="${a}">${a}</button>`).join('')}</div>
+        <label>或上傳圖片</label>
+        <input type="file" id="ai-pe-avatar-upload" accept="image/*" style="margin-bottom:8px">
+        <div id="ai-pe-avatar-preview" style="display:${state.customAiAvatarUrl?'block':'none'};text-align:center;margin-bottom:8px;"><img id="ai-pe-avatar-img" src="${state.customAiAvatarUrl||''}" style="width:64px;height:64px;border-radius:50%;object-fit:cover;"></div>
+        <div class="pe-actions"><button id="ai-pe-cancel" class="pe-btn">取消</button><button id="ai-pe-save" class="pe-btn primary">儲存</button></div>
+    </div>`;
+    document.body.appendChild(overlay);
+    requestAnimationFrame(()=>overlay.classList.add('visible'));
+    overlay.querySelectorAll('.pe-av-btn').forEach(b=>{
+        b.addEventListener('click',()=>{
+            overlay.querySelectorAll('.pe-av-btn').forEach(x=>x.classList.remove('active'));
+            b.classList.add('active');
+            $('ai-pe-avatar-preview').style.display='none';
+        });
+    });
+    $('ai-pe-avatar-upload').addEventListener('change',(e)=>{
+        const file = e.target.files[0]; if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev)=>{ $('ai-pe-avatar-img').src = ev.target.result; $('ai-pe-avatar-preview').style.display='block'; overlay.querySelectorAll('.pe-av-btn').forEach(x=>x.classList.remove('active')); };
+        reader.readAsDataURL(file);
+    });
+    $('ai-pe-cancel').addEventListener('click',()=>{overlay.classList.remove('visible');setTimeout(()=>overlay.remove(),300);});
+    $('ai-pe-save').addEventListener('click',()=>{
+        const name = $('ai-pe-name').value.trim();
+        const av = overlay.querySelector('.pe-av-btn.active');
+        const customImg = $('ai-pe-avatar-img').src;
+        const hasCustom = $('ai-pe-avatar-preview').style.display !== 'none' && customImg;
+        if (name) { state.customAiName = name; localStorage.setItem('warmchat-ai-name', name); }
+        if (hasCustom) {
+            state.customAiAvatar = '';
+            state.customAiAvatarUrl = customImg;
+            localStorage.setItem('warmchat-ai-custom-avatar', customImg);
+            localStorage.removeItem('warmchat-ai-avatar');
+        } else if (av) {
+            state.customAiAvatar = av.dataset.av;
+            state.customAiAvatarUrl = '';
+            localStorage.setItem('warmchat-ai-avatar', av.dataset.av);
+            localStorage.removeItem('warmchat-ai-custom-avatar');
+        }
+        // 更新 header
+        const avatarEl = document.querySelector('.avatar-icon');
+        if (avatarEl) {
+            if (state.customAiAvatarUrl) avatarEl.innerHTML = `<img src="${state.customAiAvatarUrl}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;">`;
+            else if (state.customAiAvatar) avatarEl.textContent = state.customAiAvatar;
+            else { const pp = PERSONAS[state.persona]; avatarEl.textContent = (pp && state.persona !== 'default') ? pp.icon : '💛'; }
+        }
+        const nameEl = document.querySelector('.header-title');
+        if (nameEl && state.customAiName) nameEl.textContent = state.customAiName;
+        overlay.classList.remove('visible'); setTimeout(()=>overlay.remove(),300);
+    });
+}
+
 // ===== MESSAGES =====
 function formatTime() {
     const n=new Date(); return `${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`;
@@ -163,6 +241,8 @@ function addMessage(text, type, tierTag) {
     let avatarHtml;
     if (type==='user' && state.customAvatarUrl) avatarHtml = `<img src="${state.customAvatarUrl}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
     else if (type==='user') avatarHtml = state.userAvatar;
+    else if (type==='bot' && state.customAiAvatarUrl) avatarHtml = `<img src="${state.customAiAvatarUrl}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
+    else if (type==='bot' && state.customAiAvatar) avatarHtml = state.customAiAvatar;
     else { const p = PERSONAS[state.persona]; avatarHtml = (p && state.persona !== 'default') ? p.icon : '💛'; }
     let tierBadge = '';
     if (type==='bot' && tierTag) {
@@ -282,6 +362,25 @@ function init() {
     profBtn.innerHTML = state.customAvatarUrl ? `<img src="${state.customAvatarUrl}" style="width:24px;height:24px;border-radius:50%;object-fit:cover;">` : `<span>${state.userAvatar}</span>`;
     profBtn.addEventListener('click', showProfileEditor);
     document.querySelector('.header-actions').prepend(profBtn);
+    // AI avatar click → open AI editor
+    const aiAvatarArea = document.querySelector('.header-avatar');
+    if (aiAvatarArea) {
+        aiAvatarArea.style.cursor = 'pointer';
+        aiAvatarArea.title = '點擊自訂 AI 頭像與名稱';
+        aiAvatarArea.addEventListener('click', showAiProfileEditor);
+    }
+    // Init AI name/avatar from saved state
+    if (state.customAiName) {
+        const nameEl = document.querySelector('.header-title');
+        if (nameEl) nameEl.textContent = state.customAiName;
+    }
+    if (state.customAiAvatarUrl) {
+        const avatarEl = document.querySelector('.avatar-icon');
+        if (avatarEl) avatarEl.innerHTML = `<img src="${state.customAiAvatarUrl}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;">`;
+    } else if (state.customAiAvatar) {
+        const avatarEl = document.querySelector('.avatar-icon');
+        if (avatarEl) avatarEl.textContent = state.customAiAvatar;
+    }
     setTimeout(()=>DOM.input.focus(), 500);
     setInterval(()=>{if(Math.random()>0.7)spawnHearts(1);},8000);
 }
