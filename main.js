@@ -193,9 +193,12 @@ function shouldShowAd() {
     return false;
 }
 
+let adIndex = 0; // rotates through ads sequentially
+
 function showAd() {
     return new Promise(resolve => {
-        const ad = ADS[Math.floor(Math.random() * ADS.length)];
+        const ad = ADS[adIndex % ADS.length];
+        adIndex++;
         let mediaHtml;
         if (ad.type === 'video') {
             mediaHtml = `<video src="${ad.src}" autoplay muted loop playsinline style="width:100%;max-height:280px;border-radius:12px;object-fit:cover;"></video>`;
