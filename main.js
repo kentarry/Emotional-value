@@ -4,9 +4,10 @@ const state = {
     messages: [], isTyping: false, messageCount: 0,
     theme: localStorage.getItem('warmchat-theme') || 'dark',
     tier: localStorage.getItem('warmchat-tier') || 'basic',
-    advancedMsgCount: 0,          // counts messages in advanced tier
-    intermediateAdShown: false,    // session flag: intermediate entry ad
-    advancedAdShown: false,        // session flag: advanced entry ad
+    persona: localStorage.getItem('warmchat-persona') || 'warmheart',
+    advancedMsgCount: 0,
+    intermediateAdShown: false,
+    advancedAdShown: false,
     userName: localStorage.getItem('warmchat-name') || '',
     userAvatar: localStorage.getItem('warmchat-avatar') || '🧑',
     customAvatarUrl: localStorage.getItem('warmchat-custom-avatar') || null,
@@ -147,7 +148,7 @@ function addMessage(text, type, tierTag) {
     if (type==='user' && state.customAvatarUrl) {
         avatarHtml = `<img src="${state.customAvatarUrl}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
     } else {
-        avatarHtml = type==='user' ? state.userAvatar : '💛';
+        avatarHtml = type==='user' ? state.userAvatar : (PERSONAS[state.persona] ? PERSONAS[state.persona].emoji : '💛');
     }
     let tierBadge = '';
     if (type==='bot' && tierTag) {
@@ -267,7 +268,7 @@ async function sendMessage() {
     requestAnimationFrame(() => { DOM.chatArea.scrollTop = DOM.chatArea.scrollHeight; });
 
     const analysis = analyzeMessage(text);
-    const response = getTierResponse(analysis, state.tier);
+    const response = getPersonaResponse(analysis, state.tier, state.persona);
     const delay = Math.min(500 + response.length * 8, 2000);
 
     setTimeout(() => {
@@ -343,6 +344,16 @@ function handleMood(mood) {
 function init() {
     initTheme();
     setTier(state.tier);
+
+    // Persona dropdown
+    const personaSelect = $('persona-select');
+    if (personaSelect) {
+        personaSelect.value = state.persona;
+        personaSelect.addEventListener('change', () => {
+            state.persona = personaSelect.value;
+            localStorage.setItem('warmchat-persona', state.persona);
+        });
+    }
 
     DOM.sendBtn.addEventListener('click', sendMessage);
     DOM.input.addEventListener('keydown', e => {
