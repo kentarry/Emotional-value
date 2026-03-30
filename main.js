@@ -4,7 +4,9 @@ const state = {
     messages: [], isTyping: false, messageCount: 0,
     theme: localStorage.getItem('warmchat-theme') || 'dark',
     tier: localStorage.getItem('warmchat-tier') || 'basic',
-    advancedUseCount: parseInt(localStorage.getItem('warmchat-adv-count') || '0'),
+    advancedMsgCount: 0,          // counts messages in advanced tier
+    intermediateAdShown: false,    // session flag: intermediate entry ad
+    advancedAdShown: false,        // session flag: advanced entry ad
     userName: localStorage.getItem('warmchat-name') || '',
     userAvatar: localStorage.getItem('warmchat-avatar') || '🧑',
     customAvatarUrl: localStorage.getItem('warmchat-custom-avatar') || null,
@@ -45,11 +47,23 @@ const tierIcons = {basic:'💬',intermediate:'💝',advanced:'👑'};
 const tierLabels = {basic:'基本模式',intermediate:'中階模式',advanced:'進階模式'};
 
 function setTier(t) {
+    const prev = state.tier;
     state.tier = t;
     localStorage.setItem('warmchat-tier', t);
     document.querySelectorAll('.tier-btn').forEach(b => b.classList.toggle('active', b.dataset.tier===t));
     DOM.tierDesc.textContent = tierDescs[t];
     DOM.tierBadge.innerHTML = `<span class="tier-badge-icon">${tierIcons[t]}</span><span class="tier-badge-label">${tierLabels[t]}</span>`;
+    // Show entry ad when switching to intermediate or advanced
+    if (state.adsEnabled && t !== prev) {
+        if (t === 'intermediate' && !state.intermediateAdShown) {
+            state.intermediateAdShown = true;
+            showAd();
+        } else if (t === 'advanced' && !state.advancedAdShown) {
+            state.advancedAdShown = true;
+            state.advancedMsgCount = 0;
+            showAd();
+        }
+    }
 }
 
 // ===== PROFILE EDITOR (Avatar + Name + Custom Image) =====
@@ -169,11 +183,12 @@ const ADS = [
 
 function shouldShowAd() {
     if (!state.adsEnabled) return false;
-    if (state.tier === 'intermediate') return true;
+    // Basic: no ads
+    // Intermediate: only entry ad (handled in setTier)
+    // Advanced: every 10 messages
     if (state.tier === 'advanced') {
-        state.advancedUseCount++;
-        localStorage.setItem('warmchat-adv-count', state.advancedUseCount);
-        return state.advancedUseCount % 3 === 0;
+        state.advancedMsgCount++;
+        return state.advancedMsgCount % 10 === 0;
     }
     return false;
 }
