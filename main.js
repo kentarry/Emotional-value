@@ -7,7 +7,7 @@ const state = {
     advancedUseCount: parseInt(localStorage.getItem('warmchat-adv-count') || '0'),
     userName: localStorage.getItem('warmchat-name') || '',
     userAvatar: localStorage.getItem('warmchat-avatar') || '🧑',
-    adsEnabled: false,
+    adsEnabled: true,
     persona: localStorage.getItem('warmchat-persona') || 'default',
     lastTopic: null,
     // AI 頭像自訂
@@ -283,6 +283,14 @@ function addMessage(text, type, tierTag) {
 }
 
 // ===== AD SYSTEM =====
+const REAL_ADS = [
+    { name: '多功能工具箱', img: 'advertise/advertise1.jpeg', url: 'https://kentarry.github.io/100-tools-box/', desc: '超實用線上工具合集，一站搞定所有需求！' },
+    { name: '昆蟲飼養推薦助手', img: 'advertise/advertise2.jpeg', url: 'https://molly40920-design.github.io/insect-database-app/', desc: '想養昆蟲？讓 AI 幫你找到最適合的夥伴！' },
+    { name: '溫柔地認識自己', img: 'advertise/advertise3.jpeg', url: 'https://kentarry.github.io/QuizBox/', desc: '透過心理小測驗，更了解真實的自己 ✨' },
+];
+let _adIndex = 0;
+function getNextAd() { const ad = REAL_ADS[_adIndex % REAL_ADS.length]; _adIndex++; return ad; }
+
 function shouldShowAd() {
     if (!state.adsEnabled) return false;
     if (state.tier==='intermediate') return true;
@@ -291,18 +299,43 @@ function shouldShowAd() {
 }
 function showAd() {
     return new Promise(resolve => {
-        const ads = [{emoji:'☕',title:'休息一下',text:'喝杯咖啡，對自己好一點',cta:'享受生活'},{emoji:'🌻',title:'今天也要加油',text:'每一天都是新的開始',cta:'保持微笑'},{emoji:'🎵',title:'聽首好歌吧',text:'音樂是最好的心靈療癒',cta:'放鬆心情'}];
-        const ad = ads[Math.floor(Math.random()*ads.length)];
-        DOM.adContent.innerHTML = `<div class="ad-emoji">${ad.emoji}</div><div class="ad-title">${ad.title}</div><div class="ad-text">${ad.text}</div><div class="ad-cta">${ad.cta}</div>`;
+        const ad = getNextAd();
+        DOM.adContent.innerHTML = `<a href="${ad.url}" target="_blank" rel="noopener" class="ad-real-link"><img src="${ad.img}" alt="${ad.name}" class="ad-real-img"><div class="ad-real-info"><div class="ad-real-name">${ad.name}</div><div class="ad-real-desc">${ad.desc}</div><div class="ad-real-cta">👉 立即體驗</div></div></a>`;
         DOM.adOverlay.classList.add('visible');
         DOM.adSkipBtn.disabled=true; DOM.adSkipBtn.classList.remove('ready');
         let sec=5; DOM.adCountdown.textContent=sec; DOM.adSkipCountdown.textContent=sec;
         DOM.adSkipBtn.innerHTML=`請等待 <span>${sec}</span> 秒...`;
         DOM.adProgressBar.style.width='0%';
-        const iv=setInterval(()=>{sec--;DOM.adCountdown.textContent=sec;DOM.adProgressBar.style.width=`${((5-sec)/5)*100}%`;DOM.adSkipBtn.innerHTML=`請等待 <span>${sec}</span> 秒...`;if(sec<=0){clearInterval(iv);DOM.adSkipBtn.disabled=false;DOM.adSkipBtn.classList.add('ready');DOM.adSkipBtn.textContent='✨ 繼續聊天';DOM.adProgressBar.style.width='100%';}},1000);
+        const iv=setInterval(()=>{sec--;DOM.adCountdown.textContent=sec;DOM.adProgressBar.style.width=`${((5-sec)/5)*100}%`;DOM.adSkipBtn.innerHTML=`請等待 <span>${sec}</span> 秒...`;if(sec<=0){clearInterval(iv);DOM.adSkipBtn.disabled=false;DOM.adSkipBtn.classList.add('ready');DOM.adSkipBtn.textContent='✅ 繼續聊天';DOM.adProgressBar.style.width='100%';}},1000);
         const handler=()=>{if(!DOM.adSkipBtn.disabled){DOM.adOverlay.classList.remove('visible');DOM.adSkipBtn.removeEventListener('click',handler);resolve();}};
         DOM.adSkipBtn.addEventListener('click',handler);
     });
+}
+
+// ===== BANNER AD (底部橫幅) =====
+function initBannerAd() {
+    const banner = document.getElementById('ad-banner');
+    if (!banner) return;
+    let bannerIdx = 0;
+    function renderBanner() {
+        const ad = REAL_ADS[bannerIdx % REAL_ADS.length];
+        banner.innerHTML = `<a href="${ad.url}" target="_blank" rel="noopener" class="banner-ad-link"><img src="${ad.img}" class="banner-ad-img" alt="${ad.name}"><div class="banner-ad-text"><span class="banner-ad-tag">推薦</span><span class="banner-ad-name">${ad.name}</span></div></a><button class="banner-ad-close" id="banner-close" title="關閉">✕</button>`;
+        banner.classList.add('visible');
+        document.getElementById('banner-close').addEventListener('click', (e) => { e.stopPropagation(); banner.classList.remove('visible'); setTimeout(() => { bannerIdx++; renderBanner(); }, 30000); });
+    }
+    setTimeout(renderBanner, 3000);
+    setInterval(() => { if (banner.classList.contains('visible')) { bannerIdx++; const ad = REAL_ADS[bannerIdx % REAL_ADS.length]; const link = banner.querySelector('.banner-ad-link'); if(link){ const img = link.querySelector('.banner-ad-img'); const name = link.querySelector('.banner-ad-name'); if(img) img.src = ad.img; if(img) img.alt = ad.name; if(name) name.textContent = ad.name; link.href = ad.url; } } }, 15000);
+}
+
+// ===== IN-CHAT AD CARD =====
+function insertChatAd() {
+    const ad = getNextAd();
+    const div = document.createElement('div');
+    div.className = 'message bot chat-ad-wrapper';
+    div.innerHTML = `<div class="chat-ad-card"><div class="chat-ad-dismiss" title="關閉">✕</div><a href="${ad.url}" target="_blank" rel="noopener" class="chat-ad-inner"><img src="${ad.img}" class="chat-ad-img" alt="${ad.name}"><div class="chat-ad-body"><div class="chat-ad-badge">🔹 好友推薦</div><div class="chat-ad-title">${ad.name}</div><div class="chat-ad-desc">${ad.desc}</div></div></a></div>`;
+    DOM.msgs.appendChild(div);
+    div.querySelector('.chat-ad-dismiss').addEventListener('click', () => { div.style.opacity='0'; div.style.transform='scale(0.95)'; setTimeout(()=>div.remove(), 300); });
+    requestAnimationFrame(()=>{DOM.chatArea.scrollTop=DOM.chatArea.scrollHeight;});
 }
 
 // ===== SEND MESSAGE =====
@@ -343,6 +376,8 @@ async function sendMessage() {
         const pos=['achievement','happy','praise_seek','accomplished','emotion_happy','small_achievement'];
         if(pos.includes(analysis.category)) spawnCelebration(); else spawnHearts(2);
         if(state.messageCount>0 && state.messageCount%8===0) showMoodPopup();
+        // 每 10 條訊息插入一張對話內廣告卡片
+        if(state.adsEnabled && state.messageCount>0 && state.messageCount%10===0) { setTimeout(()=>insertChatAd(), 800); }
     }, delay);
 }
 
@@ -413,6 +448,8 @@ function init() {
     }
     setTimeout(()=>DOM.input.focus(), 500);
     setInterval(()=>{if(Math.random()>0.7)spawnHearts(1);},8000);
+    // 初始化底部橫幅廣告
+    initBannerAd();
 }
 document.addEventListener('DOMContentLoaded', init);
 })();
