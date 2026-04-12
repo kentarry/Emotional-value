@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="暖心夥伴 - 你的專屬情緒價值提供者，三種層級帶給你最溫暖的回應">
+    <title>暖心夥伴 💛 你的專屬情緒支持</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;600;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Ambient Background -->
+    <div class="ambient-bg">
+        <div class="ambient-orb orb-1"></div>
+        <div class="ambient-orb orb-2"></div>
+        <div class="ambient-orb orb-3"></div>
+        <div class="ambient-orb orb-4"></div>
+    </div>
+
+    <!-- Floating Hearts Container -->
+    <div id="floating-hearts" class="floating-hearts"></div>
+
+    <!-- Main App Container -->
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-content">
+                <div class="header-avatar">
+                    <div class="avatar-glow"></div>
+                    <div class="avatar-icon">💛</div>
+                    <div class="status-dot"></div>
+                </div>
+                <div class="header-info">
+                    <h1 class="header-title">暖心夥伴</h1>
+                    <p class="header-subtitle">
+                        <span class="online-indicator"></span>
+                        隨時在這裡陪伴你 ✨
+                    </p>
+                </div>
+                <div class="header-actions">
+                    <button id="theme-toggle" class="icon-btn" title="切換主題" aria-label="切換主題">
+                        <span class="theme-icon">🌙</span>
+                    </button>
+                    <button id="clear-chat" class="icon-btn" title="清除對話" aria-label="清除對話">
+                        <span>🗑️</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Tier Selector -->
+        <div class="tier-selector-bar">
+            <div class="tier-selector">
+                <button class="tier-btn active" data-tier="basic" id="tier-basic">
+                    <span class="tier-icon">💬</span>
+                    <span class="tier-label">基本</span>
+                    <span class="tier-tag free">免費</span>
+                </button>
+                <button class="tier-btn" data-tier="intermediate" id="tier-intermediate">
+                    <span class="tier-icon">💝</span>
+                    <span class="tier-label">中階</span>
+                    <span class="tier-tag ad">看廣告</span>
+                </button>
+                <button class="tier-btn" data-tier="advanced" id="tier-advanced">
+                    <span class="tier-icon">👑</span>
+                    <span class="tier-label">進階</span>
+                    <span class="tier-tag ad-count">每3次看廣告</span>
+                </button>
+            </div>
+            <div class="tier-description" id="tier-description">
+                <p id="tier-desc-text">簡短溫暖的回應，快速給你一個暖心擁抱 🤗</p>
+            </div>
+        </div>
+
+        <!-- Persona Selector (下拉選單) -->
+        <div class="persona-dropdown-bar">
+            <label class="persona-label" for="persona-select">🎭 選擇 AI 角色：</label>
+            <select id="persona-select" class="persona-select">
+                <!-- JS 動態填入 -->
+            </select>
+        </div>
+
+
+        <!-- Chat Area -->
+        <main class="chat-area" id="chat-area">
+            <!-- Welcome Message -->
+            <div class="welcome-section" id="welcome-section">
+                <div class="welcome-card">
+                    <div class="welcome-emoji">🤗</div>
+                    <h2 class="welcome-title">嘿～歡迎來到你的暖心空間</h2>
+                    <p class="welcome-text">
+                        不管開心或難過，我都在這裡陪你 💛
+                    </p>
+                    <div class="quick-starters">
+                        <button class="starter-chip" data-message="今天好累，心情很差...">😢 心情不好</button>
+                        <button class="starter-chip" data-message="被老闆罵了好委屈">😮‍💨 工作受氣</button>
+                        <button class="starter-chip" data-message="跟另一半吵架了">💔 感情煩惱</button>
+                        <button class="starter-chip" data-message="今天完成了一件大事！">🎉 分享好事</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Messages will be inserted here -->
+            <div id="messages-container" class="messages-container"></div>
+
+            <!-- Typing Indicator -->
+            <div class="typing-indicator" id="typing-indicator">
+                <div class="typing-avatar">💛</div>
+                <div class="typing-bubble">
+                    <div class="typing-dots">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Banner Ad -->
+        <div class="ad-banner" id="ad-banner"></div>
+
+        <!-- Input Area -->
+        <footer class="input-area">
+            <div class="input-container">
+                <div class="input-wrapper">
+                    <textarea 
+                        id="message-input" 
+                        class="message-input" 
+                        placeholder="想說什麼就說什麼吧～ 💭"
+                        rows="1"
+                        maxlength="2000"
+                        aria-label="輸入訊息"
+                    ></textarea>
+                    <button id="send-btn" class="send-btn" disabled aria-label="發送訊息">
+                        <svg class="send-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M22 2L11 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="input-footer">
+                    <p class="input-hint">按 Enter 發送 · Shift+Enter 換行</p>
+                    <div class="tier-badge" id="current-tier-badge">
+                        <span class="tier-badge-icon">💬</span>
+                        <span class="tier-badge-label">基本模式</span>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Ad Modal Overlay -->
+    <div class="ad-overlay" id="ad-overlay">
+        <div class="ad-modal">
+            <div class="ad-header">
+                <span class="ad-label">📢 贊助廣告</span>
+                <div class="ad-timer" id="ad-timer">
+                    <span id="ad-countdown">5</span>s 後可跳過
+                </div>
+            </div>
+            <div class="ad-content" id="ad-content">
+                <!-- Dynamic ad content inserted here -->
+            </div>
+            <div class="ad-footer">
+                <button class="ad-skip-btn" id="ad-skip-btn" disabled>
+                    請等待 <span id="ad-skip-countdown">5</span> 秒...
+                </button>
+            </div>
+            <div class="ad-progress">
+                <div class="ad-progress-bar" id="ad-progress-bar"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mood Feedback Popup -->
+    <div class="mood-popup" id="mood-popup">
+        <div class="mood-popup-content">
+            <p>這個回覆有沒有讓你感覺好一點？</p>
+            <div class="mood-options">
+                <button class="mood-btn" data-mood="better" title="好多了">😊</button>
+                <button class="mood-btn" data-mood="same" title="還好">😐</button>
+                <button class="mood-btn" data-mood="worse" title="還是很難過">😢</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+    <script src="responses.js"></script>
+    <script src="responses_ext.js"></script>
+    <script src="responses_ext2.js"></script>
+    <script src="responses_ext3.js"></script>
+    <script src="responses_ext4.js"></script>
+    <script src="personas.js"></script>
+    <script src="responses_enhance.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>
